@@ -27,19 +27,27 @@ public class Student {
     @NotBlank(message = "Department is required")
     private String department;
 
+    // Default constructor required by JPA
     public Student() {
     }
 
+    // Constructor with student details
     public Student(String name, String email, String department) {
         this.name = name;
         this.email = email;
         this.department = department;
     }
 
+    // Getter and setter for ID
     public Long getId() {
         return id;
     }
 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    // Getter and setter for name
     public String getName() {
         return name;
     }
@@ -48,6 +56,7 @@ public class Student {
         this.name = name;
     }
 
+    // Getter and setter for email
     public String getEmail() {
         return email;
     }
@@ -56,6 +65,7 @@ public class Student {
         this.email = email;
     }
 
+    // Getter and setter for department
     public String getDepartment() {
         return department;
     }
