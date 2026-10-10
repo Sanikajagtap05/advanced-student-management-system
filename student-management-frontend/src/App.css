@@ -364,3 +364,104 @@ tbody tr:last-child td {
     flex-direction: column;
   }
 }
+
+/* Add Student form */
+.add-student-btn {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.add-student-btn:hover {
+  background: #4338ca;
+}
+
+.add-student-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.student-form {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.student-form h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #1f2937;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-field label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: 2px solid #c7d2fe;
+  border-color: #4f46e5;
+}
+
+.student-form > button {
+  justify-self: start;
+}
+
+.app-message {
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.success-message {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.error-message {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+@media (max-width: 640px) {
+  .student-form {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .student-form h3 {
+    grid-column: auto;
+  }
+}

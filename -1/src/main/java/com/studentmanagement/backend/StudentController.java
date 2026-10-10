@@ -9,9 +9,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = "http://localhost:5173")
+
 public class StudentController {
 
     private final StudentRepository studentRepository;
