@@ -1,0 +1,46 @@
+
+# Java / Maven
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Eclipse / STS
+**/.apt_generated/
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings/
+**/.springBeans
+**/.sts4-cache/
+.metadata/
+
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Node.js / React
+**/node_modules/
+**/dist/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local configuration
+**/application-local.properties
+
+# Logs
+*.log

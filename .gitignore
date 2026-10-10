@@ -1,0 +1,22 @@
+# Eclipse workspace
+.metadata/
+
+# Java / Maven
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+# React / Node.js
+**/node_modules/
+**/dist/
+
+# IDE files
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
