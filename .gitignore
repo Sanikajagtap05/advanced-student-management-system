@@ -1,0 +1,19 @@
+.metadata/
+**/target/
+**/node_modules/
+**/dist/
+.vscode/
+.env
+.env.*
+!.env.example
+*.log
+
+# Eclipse project settings
+**/.classpath
+**/.project
+**/.settings/
+
+# Generated files
+**/target/
+**/node_modules/
+**/dist/
