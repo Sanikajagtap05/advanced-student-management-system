@@ -1,26 +1,46 @@
+
 import "./App.css";
 import { useEffect, useState } from "react";
+import {
+  Link,
+  useLocation,
+  useSearchParams,
+  useNavigate,
+} from "react-router-dom";
 
 const API_URL = "http://localhost:8080/api/students";
 
+const EMPTY_FORM = {
+  name: "",
+  email: "",
+  department: "",
+};
+
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const selectedDepartment = searchParams.get("department") || "";
+
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    department: "",
-  });
+  // Admin dropdown
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const adminName = localStorage.getItem("adminName") || "Admin";
 
+  // Load student records
   async function loadStudents() {
     setLoading(true);
-    setError("");
 
     try {
       const response = await fetch(API_URL);
@@ -31,9 +51,10 @@ function App() {
 
       const data = await response.json();
       setStudents(data);
+      setError("");
     } catch (err) {
       setError(
-        "Unable to load students. Make sure Spring Boot is running."
+        "Unable to load students. Make sure Spring Boot and MySQL are running."
       );
       console.error("Error loading students:", err);
     } finally {
@@ -45,6 +66,34 @@ function App() {
     loadStudents();
   }, []);
 
+  // Close dropdown when navigating
+  useEffect(() => {
+    setAdminMenuOpen(false);
+  }, [location.pathname]);
+
+  // Admin menu actions
+  function openAdminProfile() {
+    setAdminMenuOpen(false);
+    navigate("/settings");
+  }
+
+  function openAdminSettings() {
+    setAdminMenuOpen(false);
+    navigate("/settings");
+  }
+
+  function handleLogout() {
+    const confirmed = window.confirm(
+      "Do you want to leave the dashboard?"
+    );
+
+    if (confirmed) {
+      setAdminMenuOpen(false);
+      navigate("/");
+    }
+  }
+
+  // Handle form input
   function handleInputChange(event) {
     const { name, value } = event.target;
 
@@ -54,15 +103,55 @@ function App() {
     }));
   }
 
+  // Open Add Student form
+  function openAddForm() {
+    setFormData(EMPTY_FORM);
+    setEditingId(null);
+    setShowForm(true);
+    setMessage("");
+    setError("");
+  }
+
+  // Open Edit Student form
+  function openEditForm(student) {
+    setFormData({
+      name: student.name ?? "",
+      email: student.email ?? "",
+      department: student.department ?? "",
+    });
+
+    setEditingId(student.id);
+    setShowForm(true);
+    setMessage("");
+    setError("");
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Close form
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData(EMPTY_FORM);
+    setError("");
+  }
+
+  // Add or update student
   async function handleSubmit(event) {
     event.preventDefault();
+
     setSaving(true);
     setMessage("");
     setError("");
 
+    const isEditing = editingId !== null;
+    const url = isEditing
+      ? `${API_URL}/${editingId}`
+      : API_URL;
+
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
+      const response = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -71,84 +160,275 @@ function App() {
 
       if (!response.ok) {
         const responseText = await response.text();
+
         throw new Error(
           responseText || "Could not save the student."
         );
       }
 
-      setFormData({
-        name: "",
-        email: "",
-        department: "",
-      });
-
       setShowForm(false);
-      setMessage("Student added successfully!");
+      setEditingId(null);
+      setFormData(EMPTY_FORM);
+
+      setMessage(
+        isEditing
+          ? "Student updated successfully!"
+          : "Student added successfully!"
+      );
+
       await loadStudents();
     } catch (err) {
       setError(
         err.message || "Unable to save student. Please try again."
       );
-      console.error("Error adding student:", err);
+      console.error("Error saving student:", err);
     } finally {
       setSaving(false);
     }
   }
 
-  const filteredStudents = students.filter((student) =>
-    `${student.name} ${student.email} ${student.department}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+  // Delete student
+  async function handleDelete(student) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${student.name}?`
+    );
 
+    if (!confirmed) return;
+
+    setDeletingId(student.id);
+    setMessage("");
+    setError("");
+
+    try {
+      const response = await fetch(`${API_URL}/${student.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+
+        throw new Error(
+          responseText || "Could not delete the student."
+        );
+      }
+
+      setStudents((previous) =>
+        previous.filter((item) => item.id !== student.id)
+      );
+
+      setMessage("Student deleted successfully!");
+    } catch (err) {
+      setError(err.message || "Unable to delete student.");
+      console.error("Error deleting student:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  // Search and department filtering
+  const filteredStudents = students.filter((student) => {
+    const searchTerm = search.toLowerCase();
+
+    const matchesSearch =
+      String(student.id).includes(searchTerm) ||
+      student.name?.toLowerCase().includes(searchTerm) ||
+      student.email?.toLowerCase().includes(searchTerm) ||
+      student.department?.toLowerCase().includes(searchTerm);
+
+    const matchesDepartment =
+      !selectedDepartment ||
+      student.department === selectedDepartment;
+
+    return matchesSearch && matchesDepartment;
+  });
+
+  // Count unique departments
   const departmentCount = new Set(
-    students.map((student) => student.department)
+    students
+      .map((student) => student.department)
+      .filter(Boolean)
   ).size;
+
+  // Available department options
+  const departments = [
+    ...new Set([
+      "Computer Science",
+      "Information Technology",
+      "Electronics",
+      "Mechanical Engineering",
+      "Civil Engineering",
+      "Other",
+      ...students.map((student) => student.department),
+      formData.department,
+    ]),
+  ].filter(Boolean);
+
+  const isStudentsPage = location.pathname === "/students";
 
   return (
     <div className="app">
+      {/* Sidebar */}
       <aside className="sidebar">
         <h2>StudentHub</h2>
+
         <p className="sidebar-label">MAIN MENU</p>
-        <div className="nav-item active">Dashboard</div>
-        <div className="nav-item">Students</div>
-        <div className="nav-item">Departments</div>
-        <div className="nav-item">Settings</div>
+
+        <Link
+          to="/"
+          className={`nav-item ${
+            location.pathname === "/" ? "active" : ""
+          }`}
+        >
+          Dashboard
+        </Link>
+
+        <Link
+          to="/students"
+          className={`nav-item ${
+            isStudentsPage ? "active" : ""
+          }`}
+        >
+          Students
+        </Link>
+
+        <Link
+          to="/departments"
+          className={`nav-item ${
+            location.pathname === "/departments" ? "active" : ""
+          }`}
+        >
+          Departments
+        </Link>
+
+        <Link
+          to="/settings"
+          className={`nav-item ${
+            location.pathname === "/settings" ? "active" : ""
+          }`}
+        >
+          Settings
+        </Link>
+
         <div className="sidebar-footer">
           Student Management System
         </div>
       </aside>
 
+      {/* Main content */}
       <main className="main-content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">OVERVIEW</p>
-            <h1>Student Dashboard</h1>
+            <p className="eyebrow">
+              {isStudentsPage
+                ? "STUDENT MANAGEMENT"
+                : "OVERVIEW"}
+            </p>
+
+            <h1>
+              {isStudentsPage
+                ? "Students"
+                : "Student Dashboard"}
+            </h1>
           </div>
-          <span className="profile">Admin</span>
+
+          {/* Admin dropdown */}
+          <div className="admin-menu-container">
+            <button
+              type="button"
+              className="profile"
+              onClick={() =>
+                setAdminMenuOpen((previous) => !previous)
+              }
+              aria-expanded={adminMenuOpen}
+              aria-haspopup="menu"
+            >
+              {adminName}
+              <span className="admin-arrow">
+                {adminMenuOpen ? "▴" : "▾"}
+              </span>
+            </button>
+
+            {adminMenuOpen && (
+              <div className="admin-dropdown" role="menu">
+                <div className="admin-dropdown-header">
+                  <div className="admin-avatar">
+                    {adminName.charAt(0).toUpperCase()}
+                  </div>
+
+                  <div className="admin-user-info">
+                    <strong>{adminName}</strong>
+                    <small>Administrator</small>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="admin-menu-item"
+                  role="menuitem"
+                  onClick={openAdminProfile}
+                >
+                  <span>👤</span>
+                  My Profile
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-menu-item"
+                  role="menuitem"
+                  onClick={openAdminSettings}
+                >
+                  <span>⚙️</span>
+                  Settings
+                </button>
+
+                <div className="admin-menu-divider" />
+
+                <button
+                  type="button"
+                  className="admin-menu-item logout-item"
+                  role="menuitem"
+                  onClick={handleLogout}
+                >
+                  <span>↪</span>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
+        {/* Welcome banner */}
         <section className="welcome">
           <div>
             <p className="eyebrow">ADMINISTRATION</p>
-            <h2>Welcome back!</h2>
+            <h2>Welcome back, {adminName}!</h2>
             <p>Manage student records from one place.</p>
           </div>
+
           <span className="welcome-icon">🎓</span>
         </section>
 
+        {/* Success message */}
         {message && (
-          <div className="app-message success-message" role="status">
+          <div
+            className="app-message success-message"
+            role="status"
+          >
             {message}
           </div>
         )}
 
+        {/* Error message */}
         {error && (
-          <div className="app-message error-message" role="alert">
+          <div
+            className="app-message error-message"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
+        {/* Dashboard statistics */}
         <section className="stats">
           <article className="stat-card">
             <span>Total Students</span>
@@ -165,38 +445,58 @@ function App() {
           <article className="stat-card">
             <span>System Status</span>
             <h2 className="status-text">
-              {loading ? "Loading..." : error ? "Check API" : "Ready"}
+              {loading
+                ? "Loading..."
+                : error
+                  ? "Check API"
+                  : "Ready"}
             </h2>
             <p>Dashboard status</p>
           </article>
         </section>
 
+        {/* Student records */}
         <section className="student-section">
           <div className="section-heading">
             <div>
-              <h2>Student Records</h2>
-              <p>View and search student information.</p>
+              <h2>
+                {selectedDepartment
+                  ? `${selectedDepartment} Students`
+                  : isStudentsPage
+                    ? "All Students"
+                    : "Student Records"}
+              </h2>
+
+              <p>
+                View, search, add, edit, and delete student information.
+              </p>
             </div>
 
             <button
               type="button"
               className="add-student-btn"
-              onClick={() => {
-                setMessage("");
-                setError("");
-                setShowForm((previous) => !previous);
-              }}
+              onClick={showForm ? closeForm : openAddForm}
+              disabled={saving}
             >
               {showForm ? "Cancel" : "+ Add Student"}
             </button>
           </div>
 
+          {/* Add/Edit form */}
           {showForm && (
-            <form className="student-form" onSubmit={handleSubmit}>
-              <h3>Add New Student</h3>
+            <form
+              className="student-form"
+              onSubmit={handleSubmit}
+            >
+              <h3>
+                {editingId !== null
+                  ? `Edit Student #${editingId}`
+                  : "Add New Student"}
+              </h3>
 
               <div className="form-field">
                 <label htmlFor="name">Student Name</label>
+
                 <input
                   id="name"
                   name="name"
@@ -211,6 +511,7 @@ function App() {
 
               <div className="form-field">
                 <label htmlFor="email">Email Address</label>
+
                 <input
                   id="email"
                   name="email"
@@ -225,6 +526,7 @@ function App() {
 
               <div className="form-field">
                 <label htmlFor="department">Department</label>
+
                 <select
                   id="department"
                   name="department"
@@ -233,43 +535,50 @@ function App() {
                   required
                 >
                   <option value="">Select department</option>
-                  <option value="Computer Science">
-                    Computer Science
-                  </option>
-                  <option value="Information Technology">
-                    Information Technology
-                  </option>
-                  <option value="Electronics">
-                    Electronics
-                  </option>
-                  <option value="Mechanical Engineering">
-                    Mechanical Engineering
-                  </option>
-                  <option value="Civil Engineering">
-                    Civil Engineering
-                  </option>
-                  <option value="Other">Other</option>
+
+                  {departments.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <button
-                type="submit"
-                className="add-student-btn"
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save Student"}
-              </button>
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className="add-student-btn"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingId !== null
+                      ? "Update Student"
+                      : "Save Student"}
+                </button>
+
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={closeForm}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           )}
 
+          {/* Search */}
           <input
             className="search-input"
             type="text"
-            placeholder="Search by name, email, or department..."
+            placeholder="Search by ID, name, email, or department..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
 
+          {/* Student table */}
           <div className="table-wrapper">
             <table>
               <thead>
@@ -278,19 +587,20 @@ function App() {
                   <th>STUDENT</th>
                   <th>EMAIL</th>
                   <th>DEPARTMENT</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
 
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="4" className="empty-state">
+                    <td colSpan="5" className="empty-state">
                       Loading students...
                     </td>
                   </tr>
                 ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="empty-state">
+                    <td colSpan="5" className="empty-state">
                       No students found.
                     </td>
                   </tr>
@@ -298,12 +608,52 @@ function App() {
                   filteredStudents.map((student) => (
                     <tr key={student.id}>
                       <td>#{student.id}</td>
-                      <td className="student-name">{student.name}</td>
+
+                      <td className="student-name">
+                        {student.name}
+                      </td>
+
                       <td>{student.email}</td>
+
                       <td>
                         <span className="department">
                           {student.department}
                         </span>
+                      </td>
+
+                      <td>
+                        <div className="table-actions">
+                          <Link
+                            to={`/students/${student.id}`}
+                            className="view-btn"
+                          >
+                            View Details
+                          </Link>
+
+                          <button
+                            type="button"
+                            className="edit-btn"
+                            onClick={() => openEditForm(student)}
+                            disabled={
+                              saving || deletingId !== null
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            onClick={() => handleDelete(student)}
+                            disabled={
+                              saving || deletingId !== null
+                            }
+                          >
+                            {deletingId === student.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
